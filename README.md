@@ -51,6 +51,22 @@ A floating workspace **directory-tree** plugin for DeepSeek Harness (DSH), with 
 | **A 动态插件**（`dynamic/`） | 自包含 JS 代码 | 开箱即用，无需 checkout/构建 | 重启后需重新运行 |
 | **B 持久化插件**（`persistent/`） | 域包 + UI 包源码 | 重启自动加载，正确跟随会话工作区 | 需在 DSH checkout 里构建 |
 
+### ⚠️ 先看你的 DSH 是怎么装的
+
+| 安装方式 | 该用哪种形态 |
+|---------|-------------|
+| `npx @deepseek-ai/dsh web`（npm 安装） | **只能用形态 A**（动态插件） |
+| 源码 checkout（`git clone` + 自己跑） | 形态 A 或形态 B 都可以 |
+
+**为什么 `npx` 安装只能用形态 A？**
+
+`npx` 会把 DSH 装进一个**只读的 npx 缓存目录**，内置包都是预编译好的，无法：
+- 修改 `packages/api/remotes/`（形态 B 需要它挂载 `dirTreeRemote`）
+- 编译源码 + Typert 代码生成（需要 `tsc`/`tsdown`/typert 工具链和源码树）
+- 把域包/UI 包放进 `packages/` 目录
+
+所以用 `npx` 装的 DSH，请直接用**形态 A**；只有自己维护 DSH 源码 checkout 的用户才能装**形态 B**。
+
 ---
 
 ## 形态 A：动态插件（最便携）
