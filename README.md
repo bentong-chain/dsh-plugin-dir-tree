@@ -4,6 +4,8 @@
 
 A floating workspace **directory-tree** plugin for DeepSeek Harness (DSH), with drag-and-drop paths, double-click copy, search, and lazy-loading.
 
+> 🚀 **想直接安装？用独立分发版**：[dsh-dir-tree](https://github.com/bentong-chain/dsh-dir-tree)（形态 C 标准 bundle，`dsh plugin add` 即装）
+
 ## 功能 Features
 
 - 📁 浮窗展示工作区目录树，右下角可最小化
@@ -42,30 +44,84 @@ A floating workspace **directory-tree** plugin for DeepSeek Harness (DSH), with 
 
 ---
 
-## 两种形态 Two Forms
+## 三种形态 Three Forms
 
-本仓库提供两种形态，按需选用：
+本仓库提供三种形态，按需选用：
 
 | 形态 | 说明 | 优点 | 缺点 |
 |------|------|------|------|
-| **A 动态插件**（`dynamic/`） | 自包含 JS 代码 | 开箱即用，无需 checkout/构建 | 重启后需重新运行 |
-| **B 持久化插件**（`persistent/`） | 域包 + UI 包源码 | 重启自动加载，正确跟随会话工作区 | 需在 DSH checkout 里构建 |
+| **C 标准 bundle**（`bundle/`）⭐ 推荐 | 单包 npm，`dsh plugin add` 即装 | 标准分发，无需 checkout/构建/创造模式 | 需发布到 npm 或 git |
+| **A 动态插件**（`dynamic/`） | 自包含 JS 代码 | 开箱即用 | 重启后需重新运行 + 需创造模式 |
+| **B 持久化插件**（`persistent/`） | 域包 + UI 包源码 | 重启自动加载 | 需在 DSH 源码 checkout 里改 api-remotes + 构建 |
 
 ### ⚠️ 先看你的 DSH 是怎么装的
 
 | 安装方式 | 该用哪种形态 |
 |---------|-------------|
-| `npx @deepseek-ai/dsh web`（npm 安装） | **只能用形态 A**（动态插件） |
-| 源码 checkout（`git clone` + 自己跑） | 形态 A 或形态 B 都可以 |
+| `npx @deepseek-ai/dsh web`（npm 安装） | **形态 C**（推荐）或形态 A |
+| 源码 checkout（`git clone` + 自己跑） | 形态 C / A / B 都可以 |
 
-**为什么 `npx` 安装只能用形态 A？**
+**为什么推荐形态 C？**
 
-`npx` 会把 DSH 装进一个**只读的 npx 缓存目录**，内置包都是预编译好的，无法：
-- 修改 `packages/api/remotes/`（形态 B 需要它挂载 `dirTreeRemote`）
-- 编译源码 + Typert 代码生成（需要 `tsc`/`tsdown`/typert 工具链和源码树）
-- 把域包/UI 包放进 `packages/` 目录
+形态 C 是 DSH 官方的**标准第三方插件分发方式**——一个 npm「组合包 bundle」，用户 `dsh plugin add` 安装即可，**无需源码 checkout、无需改内置包、无需创造模式**。它用 `ctx.connection.rpc`（第三方可用的 Client→Host 通道）替代了形态 B 里一等公民专属的 `@Remote`/api-remotes。
 
-所以用 `npx` 装的 DSH，请直接用**形态 A**；只有自己维护 DSH 源码 checkout 的用户才能装**形态 B**。
+**形态 B 为什么被降级**：它用了 `@Remote` + api-remotes 的一等公民机制，需要修改 DSH 内置的 `api-remotes` 去挂载贡献，第三方插件改不了，所以只能作为「合入 monorepo 的内置插件」参考，不适合社区分发。
+
+---
+
+## 形态 C：标准 bundle（⭐ 推荐）
+
+DSH 官方的**标准第三方插件分发方式**：一个 npm 包（组合包 bundle），用户 `dsh plugin add` 安装即可，**无需源码 checkout、无需改内置包、无需创造模式**。
+
+> 🚀 **本形态已独立分发**：[dsh-dir-tree](https://github.com/bentong-chain/dsh-dir-tree)（含截图/文档/安装说明），一条命令即装：
+>
+> ```sh
+> dsh plugin --profile web add github:bentong-chain/dsh-dir-tree
+> ```
+
+### 原理
+
+- Host 半用 `ctx.connection.rpc.handle('/dirtree', ...)` 注册一条**第三方 RPC 通道**（不依赖 api-remotes、不依赖 Typert 代码生成）
+- Client 半用 `ctx.connection.rpc.call('/dirtree', 'list', { path: cwd })` 调用 Host
+- 当前工作区 `cwd` 由 Client 半从 `ctx.sessions.list.getSnapshot().byId[current].cwd` 拿到，直接传给 Host（无需在 Host 解析会话身份）
+
+### 文件结构（`bundle/`）
+
+```
+bundle/
+├── package.json       # dsh.bundle + dsh.client + prepare 构建脚本
+├── cordis.patch.yml   # 插入插件行
+├── index.js           # Host 半（connection.rpc.handle + node:fs 列目录）
+├── client.js          # Client 半源码（浮窗 UI + connection.rpc.call）
+├── client.bundle.js   # 构建产物（prepare 生成）
+└── build.mjs          # prepare 脚本：esbuild 打包 client.js
+```
+
+### 安装
+
+**方式一：从 git 安装（无需发布 npm）**
+
+```sh
+dsh plugin add github:你的用户名/dsh-plugin-dir-tree
+```
+
+首次会提示在 profile 的 `pnpm-workspace.yaml` 加 `allowBuilds` 授权，按提示复制粘贴即可。
+
+**方式二：发布到 npm**
+
+```sh
+npm publish          # 作者先构建并发布
+# 用户安装
+dsh plugin add dsh-dir-tree
+```
+
+### 工作原理
+
+1. Host 半注册 `/dirtree` RPC 通道，用 `node:fs` 的 `readdir({ withFileTypes: true })` 列目录
+2. Client 半读当前会话 `cwd`，`connection.rpc.call('/dirtree', 'list', { path: cwd })` 拿目录
+3. 浮窗渲染；点击 `▶` 懒加载时再 call 一次子目录
+
+> 说明：本形态基于 DSH 源码调研，`connection.rpc` 的 API 已确认；`build.mjs` 的 esbuild 打包细节建议参照官方 `turtle-ui` 例子验证。会话身份不在 RPC 通道里，Client 半显式传 `cwd` 是最简单正确的做法。
 
 ---
 
@@ -75,7 +131,11 @@ A floating workspace **directory-tree** plugin for DeepSeek Harness (DSH), with 
 
 ### 前提
 
-`cordis_define` / `cordis_run` 是 **DSH 的内置模型工具**，由对话里的 AI agent 调用（不是手动点按钮）。所以安装方式就是「把代码交给 agent」。
+1. `cordis_define` / `cordis_run` 是 **DSH 的内置模型工具**，由对话里的 AI agent 调用（不是手动点按钮）。所以安装方式就是「把代码交给 agent」。
+2. ⚠️ **这两个工具只有「创造模式」（Creator mode / `cordis` 预设）才提供**。`standard`（标准模式）、`code`（PTC 模式）、`minimal`（极简模式）预设里都没有，且**会话创建后预设固定，无法中途切换**。
+3. 所以安装前请确认当前会话是「创造模式」；若不是，需**新建一个会话并选择「创造模式」**，再在新会话里安装。
+
+> 如何确认/切换：打开 **设置（Settings）→ Agent 预设**，可看到当前预设；新建会话时选择「创造模式」（Creator mode / cordis）。运行中的会话保持它创建时的预设不变。
 
 ### 安装步骤
 

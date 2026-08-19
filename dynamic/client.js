@@ -111,7 +111,13 @@ return {
     }
 
     // 主面板
-    function Panel() {
+    function Panel(p) {
+      const { useSessions } = p
+      // 当前激活会话的 cwd（切换工作区/会话会自动变化）
+      const listState = useSessions()
+      const current = listState.current
+      const cwd = current !== undefined ? (listState.byId[current] || {}).cwd : undefined
+
       const ts = React.useState(null), tree = ts[0], st = ts[1]
       const ls = React.useState(true), ld = ls[0], sl = ls[1]
       const es = React.useState(null), er = es[0], se = es[1]
@@ -125,12 +131,14 @@ return {
       const fetch = React.useCallback(async function() {
         sl(true); se(null)
         try {
-          const r = await host.call('list-tree', {})
+          if (cwd === undefined) { se('无当前会话工作区'); return }
+          const r = await host.call('list-tree', { root: cwd })
           st(r); sx({})
         } catch (e) { se(e.message || 'Failed') }
         finally { sl(false) }
-      }, [])
+      }, [cwd])
 
+      // cwd 变化（切换工作区/会话）时，fetch 重新创建，自动触发重新拉取
       React.useEffect(function() { fetch() }, [fetch])
 
       const load = React.useCallback(async function(path) {
@@ -216,7 +224,8 @@ return {
     }
 
     slots.inject('shell.overlay', function() {
-      return slots.register({ name:'shell.overlay', id:'dirtree-plugin' }, function() { return React.createElement(Panel) })
+      // shell.overlay 标准 props 含 useSessions，透传给 Panel 以读取当前会话 cwd
+      return slots.register({ name:'shell.overlay', id:'dirtree-plugin' }, function(props) { return React.createElement(Panel, props) })
     })
 
     ctx.effect(function() { return disposeStyles })

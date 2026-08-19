@@ -55,7 +55,8 @@ return {
     }
 
     harness.handle('list-tree', async (args) => {
-      const root = getRoot()
+      // 优先用 Client 传入的当前会话 cwd（args.root），缺省才回退到 getRoot()
+      const root = (args && typeof args.root === 'string' && args.root) ? args.root : getRoot()
       return { root, tree: await listOne(root) }
     })
 
