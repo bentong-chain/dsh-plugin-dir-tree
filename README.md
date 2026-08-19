@@ -55,18 +55,61 @@ A floating workspace **directory-tree** plugin for DeepSeek Harness (DSH), with 
 
 ## 形态 A：动态插件（最便携）
 
-自包含代码，任何 DSH 用户都能直接使用。
+自包含代码，任何 DSH 用户都能直接使用，**无需 checkout、无需构建**。
 
-### 安装 / 使用
+### 前提
 
-1. 打开 `dynamic/host.js` 和 `dynamic/client.js`，把内容分别作为 `code.host` 和 `code.client`
-2. 用 `cordis_define` 提交（`idPrefix` 如 `dirt`），再 `cordis_run` 激活
-3. 右下角出现「📁 当前工作区」浮窗
+`cordis_define` / `cordis_run` 是 **DSH 的内置模型工具**，由对话里的 AI agent 调用（不是手动点按钮）。所以安装方式就是「把代码交给 agent」。
 
-### 注意
+### 安装步骤
 
-- **重启 DSH 后需重新 define + run**（动态插件只存在进程内存里）
-- 动态插件展示的是 `workspaceRegistry` 的第一个工作区（最近创建的那个）；若需**精确跟随当前会话工作区**，用形态 B
+**方式一：直接粘贴代码（最通用）**
+
+1. 打开 `dynamic/host.js` 和 `dynamic/client.js`，全选复制两个文件的内容。
+2. 在 DSH 对话输入框里粘贴下面这段，并把两段代码填进去：
+
+   ```
+   请用 cordis_define + cordis_run 安装这个目录树动态插件：
+
+   Host 代码（code.host）：
+   <粘贴 dynamic/host.js 的全部内容>
+
+   Client 代码（code.client）：
+   <粘贴 dynamic/client.js 的全部内容>
+   ```
+
+3. 发送后，agent 会自动调用 `cordis_define`（把 host + client 一起提交，`idPrefix` 自动分配，如 `dirt`），再调用 `cordis_run` 激活。
+4. 第一次激活客户端代码时会弹出**审批请求**，点 **允许 / Approve**。
+5. 右下角出现「📁 当前工作区」浮窗，目录树加载完成。
+
+**方式二：让 agent 读文件（仓库已 clone 到本地时）**
+
+如果仓库已经 clone 到本地，直接对 agent 说：
+
+```
+读 dynamic/host.js 和 dynamic/client.js，用 cordis_define + cordis_run 装成动态插件
+```
+
+agent 会自己读文件、提交、运行，你无需手动复制粘贴。
+
+### 使用
+
+- 点击文件夹 `▶` 展开子目录（懒加载）
+- 拖拽文件/文件夹到对话框，自动填入完整路径
+- 双击复制路径；搜索框过滤文件名
+- 点 `−` 或 `×` 最小化，右下角蓝色「📁 目录树」按钮恢复
+
+### 注意与常见问题
+
+- **重启 DSH 后需重新安装**（动态插件只存在进程内存里），重复上面的安装步骤即可。
+- 动态插件展示的是 `workspaceRegistry` 的第一个工作区（最近创建的那个）；若要**精确跟随当前会话工作区**，用形态 B。
+
+| 现象 | 原因 | 处理 |
+|------|------|------|
+| 卡在「⏳ 加载中」 | 远程调用失败但未报错 | 让 agent 用 `cordis_inspect_self` 看诊断 |
+| 报「awaiting user approval」 | 等待审批 | 点允许 |
+| 浮窗不见了 | 点到了 − 或 × | 点右下角蓝色「📁 目录树」按钮恢复 |
+| 重启后没了 | 动态插件不持久化 | 重新安装，或改用形态 B |
 
 ---
 
@@ -76,37 +119,57 @@ A floating workspace **directory-tree** plugin for DeepSeek Harness (DSH), with 
 
 - `@deepseek-ai/dsh-dir-tree`（**域包**，`persistent/domain/`）：Host `DirTreeService` + `@Remote` 服务，读 `agent.session.header.cwd` 精确取**当前会话工作区**
 - `@deepseek-ai/dsh-client-ui-dir-tree`（**UI 包**，`persistent/ui/`）：客户端浮窗 UI
-- api-remotes 挂载 `dirTreeRemote`（一处改动，见 `persistent/API_REMOTES_PATCH.md`）
+- api-remotes 挂载 `dirTreeRemote`（提供 `remote.dirTree` 命名空间）
+
+### 前提
+
+需要能访问 DSH 的源码 checkout（因为要编译 + Typert 代码生成）。
 
 ### 安装步骤
 
-1. 把 `persistent/domain/` 放到 DSH checkout 的 `packages/dir-tree/dir-tree/`
-2. 把 `persistent/ui/` 放到 `packages/client/ui-dir-tree/`
-3. 按 `persistent/API_REMOTES_PATCH.md` 修改 `packages/api/remotes/`（3 个文件）
-4. 把两个包注册进根 `tsconfig.client.json` / `tsconfig.host.json`
-5. 构建：
+1. **放源码**：把 `persistent/domain/` 下的文件放到 DSH checkout 的 `packages/dir-tree/dir-tree/`，把 `persistent/ui/` 放到 `packages/client/ui-dir-tree/`。具体每个文件映射到哪个 `src/` 子目录，见 `persistent/README.md`。
 
-```bash
-pnpm install
-pnpm run build:lib:host     # tsc -b + tsdown（含 typert 代码生成）
-pnpm run build:lib:client
-```
+2. **改 api-remotes**：按 `persistent/API_REMOTES_PATCH.md` 修改 `packages/api/remotes/` 的 3 个文件，挂载 `dirTreeRemote`。
 
-6. 在宿主组合（`$DSH_HOME/profiles/<profile>/cordis.patch.yml`）里加两行：
+3. **注册 tsconfig 引用**：
+   - 根 `tsconfig.host.json` 的 `references` 加：`{ "path": "./packages/dir-tree/dir-tree/tsconfig.host.json" }`
+   - 根 `tsconfig.client.json` 的 `references` 加：`{ "path": "./packages/client/ui-dir-tree" }`
 
-```yaml
-- insert:
-    - id: dir-tree
-      name: '@deepseek-ai/dsh-dir-tree'
-    - id: ui-dir-tree
-      name: '@deepseek-ai/dsh-client-ui-dir-tree'
-```
+4. **构建**：
 
-7. 重启 DSH → 右下角出现浮窗，切换工作区自动跟随
+   ```bash
+   pnpm install
+   pnpm run build:lib:host     # tsc -b + tsdown（含 typert 代码生成）
+   pnpm run build:lib:client
+   ```
+
+5. **建包链接**（如果 DSH 的 `require.resolve` 找不到包，需要手动建 Junction/symlink）：
+
+   ```
+   apps/cli/node_modules/@deepseek-ai/dsh-dir-tree        → packages/dir-tree/dir-tree
+   apps/cli/node_modules/@deepseek-ai/dsh-client-ui-dir-tree → packages/client/ui-dir-tree
+   $DSH_HOME/profiles/node_modules/@deepseek-ai/...       → apps/cli/node_modules/@deepseek-ai/...
+   ```
+
+6. **注册到宿主组合**：编辑 `$DSH_HOME/profiles/<profile>/cordis.patch.yml`：
+
+   ```yaml
+   - insert:
+       - id: dir-tree
+         name: '@deepseek-ai/dsh-dir-tree'
+       - id: ui-dir-tree
+         name: '@deepseek-ai/dsh-client-ui-dir-tree'
+   ```
+
+7. **重启 DSH** → 右下角出现浮窗，切换工作区自动跟随。
 
 ### 为什么形态 B 能精确跟随工作区
 
 域包的 `@Remote` 方法第一个参数是 `agent: Agent`（由网关从浏览器会话身份解析），用 `agent.session.header.cwd` 拿到**本会话**的工作区。每个会话各挂一份，切换工作区即切换到对应会话，目录树自动跟随。
+
+### 注意
+
+- 两个包当前是 `private: true`、版本 `0.1.0`；若要发布到 npm 或过 DSH 完整 release 门禁（`check-workspace-constraints` / `verify-package-invariants`），需对照 `packages/client/ui-goal` 补 `invariant` 伴生包、`publishConfig`、`repository`，并对齐版本号。
 
 ---
 
