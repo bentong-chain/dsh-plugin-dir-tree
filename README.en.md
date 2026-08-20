@@ -73,10 +73,10 @@ Form C is DSH's official **standard third-party plugin distribution** — a sing
 
 DSH's official **standard third-party plugin distribution**: a single npm package (composition bundle) that users install with `dsh plugin add` — **no source checkout, no editing of built-in packages, no Creator mode**.
 
-> 🚀 **This form is already distributed standalone**: [dsh-dir-tree](https://github.com/bentong-chain/dsh-dir-tree) (screenshots/docs/install guide included). One command to install:
+> 🚀 **This form is already distributed standalone**: [dsh-dir-tree](https://github.com/bentong-chain/dsh-dir-tree) (published on npm, screenshots/docs/install guide included). One command to install:
 >
 > ```sh
-> dsh plugin --profile web add github:bentong-chain/dsh-dir-tree
+> dsh plugin --profile web add dsh-dir-tree
 > ```
 
 ### How it works
@@ -99,21 +99,21 @@ bundle/
 
 ### Installation
 
-**Option 1: Install from git (no npm publish needed)**
+**Option 1: Install from npm (recommended — no authorization needed)**
+
+This form is published on npm, one command:
 
 ```sh
-dsh plugin add github:your-username/dsh-plugin-dir-tree
+dsh plugin --profile web add dsh-dir-tree
+```
+
+**Option 2: Install from git (no npm publish involved)**
+
+```sh
+dsh plugin --profile web add github:bentong-chain/dsh-dir-tree
 ```
 
 On first install you'll be prompted to add an `allowBuilds` authorization to `pnpm-workspace.yaml` in your profile — copy and paste it as prompted.
-
-**Option 2: Publish to npm**
-
-```sh
-npm publish          # the author builds and publishes first
-# users install with
-dsh plugin add dsh-dir-tree
-```
 
 ### How it works under the hood
 

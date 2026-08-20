@@ -73,10 +73,10 @@
 
 DSH 官方的**标准第三方插件分发方式**：一个 npm 包（组合包 bundle），用户 `dsh plugin add` 安装即可，**无需源码 checkout、无需改内置包、无需创造模式**。
 
-> 🚀 **本形态已独立分发**：[dsh-dir-tree](https://github.com/bentong-chain/dsh-dir-tree)（含截图/文档/安装说明），一条命令即装：
+> 🚀 **本形态已独立分发**：[dsh-dir-tree](https://github.com/bentong-chain/dsh-dir-tree)（已发布到 npm，含截图/文档/安装说明），一条命令即装：
 >
 > ```sh
-> dsh plugin --profile web add github:bentong-chain/dsh-dir-tree
+> dsh plugin --profile web add dsh-dir-tree
 > ```
 
 ### 原理
@@ -99,21 +99,21 @@ bundle/
 
 ### 安装
 
-**方式一：从 git 安装（无需发布 npm）**
+**方式一：npm 安装（推荐，无需任何授权）**
+
+本形态已发布到 npm，一条命令即装：
 
 ```sh
-dsh plugin add github:你的用户名/dsh-plugin-dir-tree
+dsh plugin --profile web add dsh-dir-tree
+```
+
+**方式二：从 git 安装（无需发布 npm）**
+
+```sh
+dsh plugin --profile web add github:bentong-chain/dsh-dir-tree
 ```
 
 首次会提示在 profile 的 `pnpm-workspace.yaml` 加 `allowBuilds` 授权，按提示复制粘贴即可。
-
-**方式二：发布到 npm**
-
-```sh
-npm publish          # 作者先构建并发布
-# 用户安装
-dsh plugin add dsh-dir-tree
-```
 
 ### 工作原理
 
